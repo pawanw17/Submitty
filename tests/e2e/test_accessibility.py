@@ -1,6 +1,7 @@
 from .base_testcase import BaseTestCase
 import requests
 import json
+import time
 
 class TestAccessibility(BaseTestCase):
     """
@@ -9,120 +10,111 @@ class TestAccessibility(BaseTestCase):
     def __init__(self, testname):
         super().__init__(testname, log_in=False)
 
-
-    # This should contain a url for every type of page on the webiste
-    urls = [
-        '/home',
-        '/s20/sample',
-        '/s20/sample/gradeable/future_no_tas_homework/update?nav_tab=0',
-        '/s20/sample/gradeable/future_no_tas_lab/grading?view=all',
-        '/s20/sample/gradeable/future_no_tas_test/grading?view=all',
-        '/s20/sample/gradeable/open_homework/grading/status',
-        '/s20/sample/gradeable/open_homework/grading/details?view=all',
-        '/s20/sample/gradeable/open_homework',
-        '/s20/sample/gradeable/open_team_homework/team',
-        '/s20/sample/gradeable/grades_released_homework_autota',
-        '/s20/sample/notifications',
-        '/s20/sample/notifications/settings',
-        '/s20/sample/gradeable',
-        '/s20/sample/config',
-        '/s20/sample/theme',
-        '/s20/sample/office_hours_queue',
-        '/s20/sample/course_materials',
-        '/s20/sample/forum',
-        '/s20/sample/forum/threads/new',
-        '/s20/sample/forum/categories',
-        '/s20/sample/forum/stats',
-        '/s20/sample/users',
-        '/s20/sample/graders',
-        '/s20/sample/sections',
-        '/s20/sample/student_photos',
-        '/s20/sample/late_days',
-        '/s20/sample/extensions',
-        '/s20/sample/grade_override',
-        '/s20/sample/plagiarism',
-        '/s20/sample/plagiarism/configuration/new',
-        '/s20/sample/reports',
-        '/s20/sample/late_table'
-    ]
+    course_url = ''
 
     def test_w3_validator(self):
-        # Uncomment this to generate a new baseline for all pages on the website
-        # Then run 'python3 -m unittest e2e.test_accessibility' from inside the tests folder
-        # genBaseline(self)
+        t0 = time.time()
+        new_baseline = False
+        # new_baseline = True # Uncomment this line if you want to generate a new baseline
 
-        # Uncomment this to generate a new baseline for a specific url
-        # url = '' # your url here
-        # genBaseline(self, url)
+        self.course_url = f"{self.TEST_URL}/{self.get_current_semester()}/sample"
+
+        if new_baseline:
+            baseline = {}
+        else:
+            with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json') as f:
+                baseline = json.load(f)
+
+        runCheck(self, baseline, new_baseline)
+
+        if new_baseline:
+            with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json', 'w') as file:
+                json.dump(baseline, file, ensure_ascii=False, indent=4)
 
 
-        validatePages(self)
+        t1 = time.time()
+        print(f'This test took {t1-t0}s to run')
 
 
+# The goal of this function is to remove urls that are different but act in the same way
+# An example would be we dont want to check every post on the forum, so remove all but 1 post
+def urlInUrls(self, new_url, urls):
+    for url in urls:
+        tmp_new_url = new_url
 
-def validatePages(self):
-    self.log_out()
+        if tmp_new_url.startswith(self.course_url+'/forum/threads'):
+            tmp_new_url = self.course_url+'/forum'
+
+        if tmp_new_url == url:
+            return True
+
+
+def runCheck(self, baseline, make_new_baseline=False):
     self.log_in(user_id='instructor')
-    self.click_class('sample')
-    with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json') as f:
-        baseline = json.load(f)
+    urls = []
+    urls_to_check = [self.TEST_URL+'/home']
+    while urls_to_check:
+        url = urls_to_check.pop()
+        if urlInUrls(self, url, urls):
+            continue
 
-    foundError = False
-    for url in self.urls:
-        self.get(url=url)
+        print(url)
+        self.driver.get(url)
+        urls.append(url)
 
-        payload = self.driver.page_source
-        headers = {
-          'Content-Type': 'text/html; charset=utf-8'
-        }
-        response = requests.request("POST", "https://validator.w3.org/nu/?out=json", headers=headers, data = payload.encode('utf-8'))
+        if make_new_baseline:
+            genBaseline(self, url, baseline)
+        else:
+            validatePage(self, url, baseline)
 
-
-
-        for error in response.json()['messages']:
-            # For some reason the test fails to detect this even though when you actually look at the rendered
-            # pages this error is not there. So therefore the test is set to just ignore this error.
-            if error['message'].startswith("Start tag seen without seeing a doctype first"):
+        new_page = self.driver.find_elements_by_xpath("//a[@href]")
+        for page in new_page:
+            href = page.get_attribute("href")
+            if not href.startswith(self.course_url):
                 continue
+            urls_to_check.append(page.get_attribute("href").split('?')[0].split('#')[0])
 
-            if error['message'] not in baseline[url]:
-                error['url'] = url
-                print(json.dumps(error, indent=4, sort_keys=True))
-                foundError = True
+    return list(urls)
+
+
+
+def validatePage(self, url, baseline):
+    foundError = False
+
+    payload = self.driver.page_source
+    headers = {
+      'Content-Type': 'text/html; charset=utf-8'
+    }
+    response = requests.request("POST", "https://validator.w3.org/nu/?out=json", headers=headers, data = payload.encode('utf-8'))
+
+    for error in response.json()['messages']:
+        # For some reason the test fails to detect this even though when you actually look at the rendered
+        # pages this error is not there. So therefore the test is set to just ignore this error.
+        if error['message'].startswith("Start tag seen without seeing a doctype first"):
+            continue
+
+        if error['message'] not in baseline[url]:
+            error['url'] = url
+            print(json.dumps(error, indent=4, sort_keys=True))
+            foundError = True
 
     self.assertEqual(foundError, False)
 
 
 
-def genBaseline(self, new_url=None):
-    self.log_out()
-    self.log_in(user_id='instructor')
-    self.click_class('sample')
+def genBaseline(self, url, baseline):
+    payload = self.driver.page_source
+    headers = {
+      'Content-Type': 'text/html; charset=utf-8'
+    }
+    response = requests.request("POST", "https://validator.w3.org/nu/?out=json", headers=headers, data = payload.encode('utf-8'))
 
-    baseline = {}
-    urls = self.urls
-    if new_url:
-        with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json') as f:
-            baseline = json.load(f)
-        urls = [new_url]
+    baseline[url] = {}
+    for error in response.json()['messages']:
+        # For some reason the test fails to detect this even though when you actually look at the rendered
+        # pages this error is not there. So therefore the test is set to just ignore this error.
+        if error['message'].startswith("Start tag seen without seeing a doctype first"):
+            continue
 
-    for url in urls:
-        self.get(url=url)
-        payload = self.driver.page_source
-        headers = {
-          'Content-Type': 'text/html; charset=utf-8'
-        }
-        response = requests.request("POST", "https://validator.w3.org/nu/?out=json", headers=headers, data = payload.encode('utf-8'))
-
-        if new_url == None or url == new_url:
-            baseline[url] = {}
-        for error in response.json()['messages']:
-            # For some reason the test fails to detect this even though when you actually look at the rendered
-            # pages this error is not there. So therefore the test is set to just ignore this error.
-            if error['message'].startswith("Start tag seen without seeing a doctype first"):
-                continue
-
-            if error['message'] not in baseline[url]:
-                baseline[url][error['message']] = error
-    with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json', 'w') as file:
-        json.dump(baseline, file, ensure_ascii=False, indent=4)
+        if error['message'] not in baseline[url]:
+            baseline[url][error['message']] = error

@@ -25,7 +25,7 @@ class TestAccessibility(BaseTestCase):
             with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json') as f:
                 baseline = json.load(f)
 
-        runCheck(self, baseline, new_baseline)
+        foundError = unCheck(self, baseline, new_baseline)
 
         if new_baseline:
             with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json', 'w') as file:
@@ -34,6 +34,8 @@ class TestAccessibility(BaseTestCase):
 
         t1 = time.time()
         print(f'This test took {t1-t0}s to run')
+        self.assertEqual(foundError, False)
+
 
 
 # The goal of this function is to remove urls that are different but act in the same way
@@ -50,7 +52,8 @@ def urlInUrls(self, new_url, urls):
 
 
 def runCheck(self, baseline, make_new_baseline=False):
-    self.log_in(user_id='instructor')
+    self.log_in(user_id='instructor', user_password='instructor')
+    foundError = False
     urls = []
     urls_to_check = [self.TEST_URL+'/home']
     while urls_to_check:
@@ -65,7 +68,7 @@ def runCheck(self, baseline, make_new_baseline=False):
         if make_new_baseline:
             genBaseline(self, url, baseline)
         else:
-            validatePage(self, url, baseline)
+            foundError = validatePage(self, url, baseline) or foundError
 
         new_pages = self.driver.find_elements_by_xpath("//a[@href]")
         print("\n\n\nNEW PAGES FOR", url)
@@ -76,7 +79,7 @@ def runCheck(self, baseline, make_new_baseline=False):
                 continue
             urls_to_check.append(page.get_attribute("href").split('?')[0].split('#')[0])
 
-    return list(urls)
+    return foundError
 
 
 
@@ -84,6 +87,7 @@ def validatePage(self, url, baseline):
     foundError = False
 
     payload = self.driver.page_source
+    print(self.driver.page_source)
     headers = {
       'Content-Type': 'text/html; charset=utf-8'
     }
@@ -101,6 +105,7 @@ def validatePage(self, url, baseline):
             foundError = True
 
     # self.assertEqual(foundError, False)
+    return foundError
 
 
 

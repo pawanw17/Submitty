@@ -67,9 +67,11 @@ def runCheck(self, baseline, make_new_baseline=False):
         else:
             validatePage(self, url, baseline)
 
-        new_page = self.driver.find_elements_by_xpath("//a[@href]")
-        for page in new_page:
+        new_pages = self.driver.find_elements_by_xpath("//a[@href]")
+        print("\n\n\nNEW PAGES FOR", url)
+        for page in new_pages:
             href = page.get_attribute("href")
+            print(href)
             if not href.startswith(self.course_url):
                 continue
             urls_to_check.append(page.get_attribute("href").split('?')[0].split('#')[0])

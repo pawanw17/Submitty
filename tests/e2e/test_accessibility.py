@@ -25,7 +25,7 @@ class TestAccessibility(BaseTestCase):
             with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json') as f:
                 baseline = json.load(f)
 
-        foundError = unCheck(self, baseline, new_baseline)
+        foundError = runCheck(self, baseline, new_baseline)
 
         if new_baseline:
             with open('/'.join(__file__.split('/')[:-1])+'/accessibility_baseline.json', 'w') as file:

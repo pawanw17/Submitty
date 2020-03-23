@@ -55,7 +55,8 @@ def runCheck(self, baseline, make_new_baseline=False):
     self.log_in(user_id='instructor', user_password='instructor')
     foundError = False
     urls = []
-    urls_to_check = [self.TEST_URL+'/home']
+    urls_to_check = []
+    urls_to_check.append(self.driver.current_url)
     while urls_to_check:
         url = urls_to_check.pop()
         if urlInUrls(self, url, urls):
@@ -87,7 +88,6 @@ def validatePage(self, url, baseline):
     foundError = False
 
     payload = self.driver.page_source
-    print(self.driver.page_source)
     headers = {
       'Content-Type': 'text/html; charset=utf-8'
     }

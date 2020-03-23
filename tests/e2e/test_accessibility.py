@@ -52,6 +52,14 @@ def urlInUrls(self, new_url, urls):
         if tmp_new_url == url:
             return True
 
+def addPort(url, port):
+    if port in url or 'localhost' not in url:
+        return url
+
+    split_url = url.split('localhost')
+    split_url[1] = f':{port}{split_url[1]}'
+    return 'localhost'.join(split_url)
+
 
 def runCheck(self, baseline, make_new_baseline=False):
     self.log_in(user_id='instructor', user_password='instructor')
@@ -78,6 +86,7 @@ def runCheck(self, baseline, make_new_baseline=False):
         for page in new_pages:
             href = page.get_attribute("href")
             print(href)
+            href = addPort(href, '1501')
             if not href.startswith(self.course_url):
                 print("rejecting ", href)
                 continue

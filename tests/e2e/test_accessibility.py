@@ -18,6 +18,8 @@ class TestAccessibility(BaseTestCase):
         # new_baseline = True # Uncomment this line if you want to generate a new baseline
 
         self.course_url = f"{self.TEST_URL}/{self.get_current_semester()}/sample"
+        print("course_url ", self.course_url)
+        print("TEST_URL", self.TEST_URL)
 
         if new_baseline:
             baseline = {}
@@ -77,6 +79,7 @@ def runCheck(self, baseline, make_new_baseline=False):
             href = page.get_attribute("href")
             print(href)
             if not href.startswith(self.course_url):
+                print("rejecting ", href)
                 continue
             urls_to_check.append(page.get_attribute("href").split('?')[0].split('#')[0])
 

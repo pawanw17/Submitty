@@ -66,13 +66,13 @@ def runCheck(self, baseline, make_new_baseline=False):
     foundError = False
     urls = []
     urls_to_check = []
-    urls_to_check.append(self.driver.current_url)
+    urls_to_check.append(addPort(self.driver.current_url, '1501'))
     while urls_to_check:
-        url = urls_to_check.pop()
+        url = addPort(urls_to_check.pop(), '1501')
         if urlInUrls(self, url, urls):
             continue
 
-        print(url)
+        print('75',url)
         self.driver.get(url)
         urls.append(url)
 
@@ -85,8 +85,9 @@ def runCheck(self, baseline, make_new_baseline=False):
         print("\n\n\nNEW PAGES FOR", url)
         for page in new_pages:
             href = page.get_attribute("href")
-            print(href)
+            print('88',href)
             href = addPort(href, '1501')
+            print('90',href)
             if not href.startswith(self.course_url):
                 print("rejecting ", href)
                 continue
@@ -111,6 +112,7 @@ def validatePage(self, url, baseline):
         if error['message'].startswith("Start tag seen without seeing a doctype first"):
             continue
 
+        print('115',url)
         if error['message'] not in baseline[url]:
             error['url'] = url
             print(json.dumps(error, indent=4, sort_keys=True))
